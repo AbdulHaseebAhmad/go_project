@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/AbdulHaseebAhmad/go_project/internal/config"
+	"github.com/AbdulHaseebAhmad/go_project/internal/http/handlers/student"
 )
 
 func main() {
@@ -22,8 +23,11 @@ func main() {
 	router := http.NewServeMux() // server mux is server multiplexer that routes http request to its specific handler functions
 
 	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome To Students APi"))
+		w.Write([]byte("Welcome To the App"))
 	})
+
+	// getting handler func from the student package, same like in js we have that call back function
+	router.HandleFunc("POST /api/students/", student.New())
 	// setup server
 
 	server := http.Server{
