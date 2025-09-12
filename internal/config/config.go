@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -9,7 +10,7 @@ import (
 )
 
 type HttpServer struct {
-	Address string
+	Address string `yaml:"Address" env:"Address" env-required:"true"`
 }
 
 type Database struct {
@@ -18,36 +19,37 @@ type Database struct {
 	User     string
 	Password string
 	Dbname   string
-	Sslmode  bool
+	Sslmode  string
 }
 type Config struct {
-	Env          string `yaml:"env" env:"ENV" env-required:"true" env-default:"production"` // anotating from yamls file(struct tags)
-	Storage_path string `yaml:"storage_path" env:"storage_path" env-required:"true" env-default:"production"`
+	Env          string `yaml:"env" env:"ENV" env-required:"true""` // anotating from yamls file(struct tags)
+	Storage_path string `yaml:"storage_path" env:"storage_path" env-required:"true""`
 	Database     Database
 	HttpServer   `yaml:"http_server" env-required:"true"`
 }
 
-// definition is done no we write the logic to parse it
+// definition is done now we write the logic to parse it
 func MustLoad() *Config {
 	var configPath string
+	configPath = os.Getenv("CONFIG_PATH") // get the path for the env variable holding yamml file, the path to the yaml is set the same way we did in the job for react app by using set Config_Path = ...
+	// fmt.Println("The path to the yaml holding environment variable:", configPath)
 
-	configPath = os.Getenv("CONFIG_PATH") // get the path from env
-
-	if configPath == "" { // if path from env not found use the flag from terminal using the flag package, remember at job to start the app we were setting everything from terminal for the react app
-		flags := flag.String("config", "", "path to the config file")
-		flag.Parse()
+	if configPath == "" { // if path from env not found use the flag from terminal, using the flag package,from the terminal user will enter the yaml file path
+		flags := flag.String("config", "", "path to the config file") // we are setting the flag which shall read for the path to our yaml
+		flag.Parse()                                                  // get the config path
 		configPath = *flags
+		fmt.Println("The path to the yaml holding environment variable:", configPath)
 
 		if configPath == "" {
 			log.Fatal("Config path is not set")
 		}
 	}
 
-	if _, error := os.Stat(configPath); os.IsNotExist(error) {
+	if _, error := os.Stat(configPath); os.IsNotExist(error) { // this checks if the path found above is real as if any file exist there, if it does not then throw error
 		log.Fatal("Config file does not exist: ", configPath)
 	}
 
-	var cfg Config
+	var cfg Config //
 	err := cleanenv.ReadConfig(configPath, &cfg)
 	if err != nil {
 		log.Fatal("Can not read config file: ", err.Error())
