@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/AbdulHaseebAhmad/go_project/internal/config"
-	"github.com/AbdulHaseebAhmad/go_project/internal/http/handlers/student"
-	"github.com/AbdulHaseebAhmad/go_project/internal/storage/sqllite"
+	student "github.com/AbdulHaseebAhmad/go_project/internal/httpHandler"
+	"github.com/AbdulHaseebAhmad/go_project/internal/storage/postgress"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 	cfg := config.MustLoad()
 	// database setup
 
-	storage, storageerr := sqllite.New(cfg) // the wrapper package we created, return the instance and error
+	storage, storageerr := postgress.New(cfg) // the wrapper package we created, return the instance and error
 	if storageerr != nil {
 		log.Fatal(storageerr)
 		return
@@ -35,13 +35,16 @@ func main() {
 	})
 
 	// getting handler func from the student package, same like in js we have that call back function this route creates a student
-	router.HandleFunc("POST /api/students/", student.New(storage))
+	router.HandleFunc("POST /api/students/create", student.New(storage))
 
 	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student by id
 	router.HandleFunc("GET /api/students/{id}", student.GetById(storage))
 
 	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student list
 	router.HandleFunc("GET /api/students/", student.GetStudentList(storage))
+
+	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student list
+	router.HandleFunc("GET /api/students/delete/{id}", student.DeleteStudent(storage))
 	// setup server
 
 	server := http.Server{

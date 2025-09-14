@@ -40,12 +40,12 @@ func New(storage storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		lastId, err := storage.CreateStudent(student.Name, student.Email, student.Age)
+		myStudent, err := storage.CreateStudent(student.Name, student.Email, student.Age)
 		if err != nil {
 			response.WriteJson(w, http.StatusInternalServerError, err)
 			return
 		}
-		response.WriteJson(w, http.StatusCreated, map[string]int64{"id": lastId})
+		response.WriteJson(w, http.StatusCreated, myStudent)
 	}
 }
 
@@ -81,4 +81,21 @@ func GetStudentList(storage storage.Storage) http.HandlerFunc {
 		response.WriteJson(w, http.StatusOK, stuents)
 	}
 
+}
+
+func DeleteStudent(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("Deleting Student")
+		id := r.PathValue("id") // dynamic query parameter
+		intId, conversionerr := strconv.ParseInt(id, 10, 64)
+		if conversionerr != nil {
+			response.WriteJson(w, http.StatusBadRequest, conversionerr)
+		}
+		student, err := storage.DeleteStudent(intId)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, conversionerr)
+		}
+		slog.Info("Deleting Student Success")
+		response.WriteJson(w, http.StatusOK, student)
+	}
 }

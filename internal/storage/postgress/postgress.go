@@ -1,7 +1,8 @@
-package sqllite
+package postgress
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -28,24 +29,23 @@ func New(cfg *config.Config) (*Postgres, error) {
 	return &Postgres{DB: db}, nil
 }
 
-func (s *Postgres) CreateStudent(name string, email string, age int) (id int64, error error) {
-	stmt, err := s.DB.Prepare("INSERT INTO students (name,email,age) VALUES ($1, $2, $3)")
-	if err != nil {
-		return 0, err
-	}
-	defer stmt.Close()
+func (s *Postgres) CreateStudent(name string, email string, age int) (student types.Student, error error) {
+	var newStudent types.Student
 
-	result, err := stmt.Exec(name, email, age)
-	if err != nil {
-		return 0, err
+	qerr := s.DB.QueryRow(
+		"INSERT INTO students (name,email,age) VALUES ($1, $2, $3) RETURNING id, name, email, age",
+		name, email, age,
+	).Scan(
+		&newStudent.Id,
+		&newStudent.Name,
+		&newStudent.Email,
+		&newStudent.Age,
+	)
+	if qerr != nil {
+		return types.Student{}, nil
 	}
 
-	lastId, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return lastId, nil
+	return newStudent, nil
 }
 
 func (s *Postgres) GetStudentById(id int64) (student types.Student, eror error) {
@@ -92,4 +92,24 @@ func (s *Postgres) GetStudentList() (stuentsList []types.Student, eror error) {
 		students = append(students, returnedStudent)
 	}
 	return students, nil
+}
+
+func (s *Postgres) DeleteStudent(id int64) (studentId types.Student, error error) {
+	// delete the student,return the id, if deletion unsuccessfull return error
+	stmt, err := s.DB.Prepare("DELETE FROM students WHERE id=$1")
+	if err != nil {
+		slog.Info("Error Prepping Query")
+		return types.Student{}, err
+	}
+	defer stmt.Close()
+	var returnedStudent types.Student
+	qerr := stmt.QueryRow(id).Scan(&returnedStudent.Id, &returnedStudent.Name, &returnedStudent.Email, &returnedStudent.Age)
+	if qerr != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.Info("No User Found")
+			return types.Student{}, sql.ErrNoRows
+		}
+	}
+
+	return returnedStudent, nil
 }
