@@ -13,12 +13,20 @@ import (
 
 	"github.com/AbdulHaseebAhmad/go_project/internal/config"
 	"github.com/AbdulHaseebAhmad/go_project/internal/http/handlers/student"
+	"github.com/AbdulHaseebAhmad/go_project/internal/storage/sqllite"
 )
 
 func main() {
 	// load config
 	cfg := config.MustLoad()
 	// database setup
+
+	storage, storageerr := sqllite.New(cfg) // the wrapper package we created, return the instance and error
+	if storageerr != nil {
+		log.Fatal(storageerr)
+		return
+	}
+	slog.Info("Storage Initialized", slog.String("env", cfg.Env), slog.String("Path", cfg.Storage_path))
 	// setup router
 	router := http.NewServeMux() // server mux is server multiplexer that routes http request to its specific handler functions
 
@@ -27,7 +35,7 @@ func main() {
 	})
 
 	// getting handler func from the student package, same like in js we have that call back function
-	router.HandleFunc("POST /api/students/", student.New())
+	router.HandleFunc("POST /api/students/", student.New(storage))
 	// setup server
 
 	server := http.Server{

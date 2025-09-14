@@ -8,11 +8,12 @@ import (
 	"net/http"
 
 	"github.com/AbdulHaseebAhmad/go_project/internal/Utils/response"
+	"github.com/AbdulHaseebAhmad/go_project/internal/storage"
 	"github.com/AbdulHaseebAhmad/go_project/internal/types"
 	"github.com/go-playground/validator/v10"
 )
 
-func New() http.HandlerFunc {
+func New(storage storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		slog.Info("Creating Student")
 		var student types.Student                       // get the type from out internal Type
@@ -37,6 +38,12 @@ func New() http.HandlerFunc {
 			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrors))
 			return
 		}
-		response.WriteJson(w, http.StatusCreated, response.GeneralSuccess("success"))
+
+		lastId, err := storage.CreateStudent(student.Name, student.Email, student.Age)
+		if err != nil {
+			response.WriteJson(w, http.StatusInternalServerError, err)
+			return
+		}
+		response.WriteJson(w, http.StatusCreated, map[string]int64{"id": lastId})
 	}
 }
