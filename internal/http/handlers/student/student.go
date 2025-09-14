@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/AbdulHaseebAhmad/go_project/internal/Utils/response"
 	"github.com/AbdulHaseebAhmad/go_project/internal/storage"
@@ -46,4 +47,38 @@ func New(storage storage.Storage) http.HandlerFunc {
 		}
 		response.WriteJson(w, http.StatusCreated, map[string]int64{"id": lastId})
 	}
+}
+
+func GetById(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id") // dynamic query parameter
+		slog.Info("Getting a Student", slog.String("id: ", id))
+		intId, conversionerr := strconv.ParseInt(id, 10, 64)
+		if conversionerr != nil {
+			// response.WriteJson(w, http.StatusBadRequest, response.GeneralError(conversionerr)) // my general error is not suitable to call it
+			response.WriteJson(w, http.StatusBadRequest, conversionerr)
+		}
+		student, err := storage.GetStudentById(intId)
+		if err != nil {
+			// response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(conversionerr)) // my general error is not suitable to call it
+			response.WriteJson(w, http.StatusInternalServerError, conversionerr)
+
+		}
+		response.WriteJson(w, http.StatusOK, student)
+	}
+
+}
+
+func GetStudentList(storage storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("Getting a Student")
+		stuents, err := storage.GetStudentList()
+		if err != nil {
+			// response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(conversionerr)) // my general error is not suitable to call it
+			response.WriteJson(w, http.StatusInternalServerError, err)
+
+		}
+		response.WriteJson(w, http.StatusOK, stuents)
+	}
+
 }

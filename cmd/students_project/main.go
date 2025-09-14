@@ -34,8 +34,14 @@ func main() {
 		w.Write([]byte("Welcome To the App"))
 	})
 
-	// getting handler func from the student package, same like in js we have that call back function
+	// getting handler func from the student package, same like in js we have that call back function this route creates a student
 	router.HandleFunc("POST /api/students/", student.New(storage))
+
+	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student by id
+	router.HandleFunc("GET /api/students/{id}", student.GetById(storage))
+
+	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student list
+	router.HandleFunc("GET /api/students/", student.GetStudentList(storage))
 	// setup server
 
 	server := http.Server{
