@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/AbdulHaseebAhmad/go_project/internal/config"
+	credentials "github.com/AbdulHaseebAhmad/go_project/internal/httpHandler"
 	student "github.com/AbdulHaseebAhmad/go_project/internal/httpHandler"
 	"github.com/AbdulHaseebAhmad/go_project/internal/storage/postgress"
 )
@@ -27,6 +28,7 @@ func main() {
 		return
 	}
 	slog.Info("Storage Initialized", slog.String("env", cfg.Env), slog.String("Path", cfg.Storage_path))
+
 	// setup router
 	router := http.NewServeMux() // server mux is server multiplexer that routes http request to its specific handler functions
 
@@ -45,6 +47,8 @@ func main() {
 
 	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student list
 	router.HandleFunc("GET /api/students/delete/{id}", student.DeleteStudent(storage))
+
+	router.HandleFunc("POST /api/student/signup", credentials.NewStudentRegister(storage))
 	// setup server
 
 	server := http.Server{

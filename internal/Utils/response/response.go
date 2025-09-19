@@ -21,7 +21,10 @@ type Response struct {
 
 func WriteJson(w http.ResponseWriter, status int, data any) error {
 	w.Header().Set("Content-Type", "application/json") // add header method to response
-	w.WriteHeader(status)
+	// w.WriteHeader(status)
+	if status != http.StatusOK {
+		w.WriteHeader(status)
+	}
 	return json.NewEncoder(w).Encode(data)
 }
 
