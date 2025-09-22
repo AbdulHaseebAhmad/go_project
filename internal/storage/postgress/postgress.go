@@ -1,14 +1,19 @@
 package postgress
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 
 	//
+
+	passwordhash "github.com/AbdulHaseebAhmad/go_project/internal/Utils/hash"
+	"github.com/AbdulHaseebAhmad/go_project/internal/Utils/tokens"
 	"github.com/AbdulHaseebAhmad/go_project/internal/config"
 	"github.com/AbdulHaseebAhmad/go_project/internal/types"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
@@ -105,11 +110,56 @@ func (s *Postgres) DeleteStudent(id int64) (studentId types.Student, error error
 	var returnedStudent types.Student
 	qerr := stmt.QueryRow(id).Scan(&returnedStudent.Id, &returnedStudent.Name, &returnedStudent.Email, &returnedStudent.Age)
 	if qerr != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(qerr, sql.ErrNoRows) {
 			slog.Info("No User Found")
 			return types.Student{}, sql.ErrNoRows
 		}
 	}
-
 	return returnedStudent, nil
+}
+
+func (s *Postgres) RegisterStudent(ctx context.Context, credentials types.Credentials) (email string, err error) {
+	hashedPassword, hasherror := passwordhash.Hashpassword(credentials.Password)
+	if hasherror != nil {
+		return "", fmt.Errorf("failed to insert user: %w", hasherror)
+	}
+	var newEmail string
+	qerer := s.DB.QueryRowContext(ctx, "INSERT INTO users (email, hashed_password) VALUES ($1, $2) RETURNING email",
+		credentials.Email, hashedPassword).Scan(&newEmail)
+
+	if qerer != nil {
+		pqErr, ok := qerer.(*pq.Error) // check if the qerer is of Pq.Error type, if it is it will return ok true and it will return qerer in pqErr
+		if ok {
+			if pqErr.Code == "23505" {
+				return "", fmt.Errorf("user already exists with email %s", credentials.Email)
+			}
+		}
+		return "", fmt.Errorf("failed to insert user: %w", qerer)
+	}
+
+	return fmt.Sprintf("User with email address %s Registered", newEmail), nil
+}
+
+func (s *Postgres) StudentSignin(ctx context.Context, credentials types.Login) (string, error) {
+	var retrievedPassword string
+	qerer := s.DB.QueryRowContext(ctx, "SELECT hashed_password from users where email=$1", credentials.Email).Scan(&retrievedPassword)
+	if qerer != nil {
+		if errors.Is(qerer, sql.ErrNoRows) {
+			return "", fmt.Errorf("invalid email or password")
+		}
+		return "", qerer
+	}
+	_, passerror := passwordhash.Unhashpassword(credentials.Password, retrievedPassword)
+	if passerror != nil {
+		return "", fmt.Errorf("invalid email or password")
+	}
+	sessiontoken, terr := tokens.GenerateToken(32)
+	if terr != nil {
+		return "", terr
+	}
+	_, tqerr := s.DB.ExecContext(ctx, "UPDATE users SET token = $1 WHERE email = $2", sessiontoken, credentials.Email)
+	if tqerr != nil {
+		return "", tqerr
+	}
+	return sessiontoken, nil
 }

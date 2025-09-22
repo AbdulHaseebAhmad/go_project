@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/AbdulHaseebAhmad/go_project/internal/config"
-	credentials "github.com/AbdulHaseebAhmad/go_project/internal/httpHandler"
-	student "github.com/AbdulHaseebAhmad/go_project/internal/httpHandler"
+	credentialsss "github.com/AbdulHaseebAhmad/go_project/internal/httpCredentialHandler"
+	student "github.com/AbdulHaseebAhmad/go_project/internal/httpStudentHandler"
 	"github.com/AbdulHaseebAhmad/go_project/internal/storage/postgress"
 )
 
@@ -48,7 +48,11 @@ func main() {
 	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student list
 	router.HandleFunc("GET /api/students/delete/{id}", student.DeleteStudent(storage))
 
-	router.HandleFunc("POST /api/student/signup", credentials.NewStudentRegister(storage))
+	// getting handler func from credentialss package , this will handle the request for sign up
+	router.HandleFunc("POST /api/student/signup", credentialsss.NewStudentRegister(storage))
+
+	// getting handler func from credentialss package , this will handle the request for sign in
+	router.HandleFunc("POST /api/student/login", credentialsss.StudentSignin(storage))
 	// setup server
 
 	server := http.Server{

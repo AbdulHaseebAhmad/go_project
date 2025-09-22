@@ -15,8 +15,8 @@ const (
 )
 
 type Response struct {
-	Status string `json:"status"` // we do this tags to tell the code, when you put this in json this is how it should look
-	Result string `json:"result"` // we do this tags to tell the code, when you put this in json this is how it should look
+	Status  string `json:"status"` // we do this tags to tell the code, when you put this in json this is how it should look
+	Message string `json:"result"` // we do this tags to tell the code, when you put this in json this is how it should look
 }
 
 func WriteJson(w http.ResponseWriter, status int, data any) error {
@@ -30,14 +30,14 @@ func WriteJson(w http.ResponseWriter, status int, data any) error {
 
 func GeneralSuccess(status string) Response {
 	return Response{
-		Status: statusOk,
-		Result: status,
+		Status:  statusOk,
+		Message: status,
 	}
 }
 func GeneralError(err error) Response {
 	return Response{
-		Status: statusError,
-		Result: err.Error(),
+		Status:  statusError,
+		Message: err.Error(),
 	}
 }
 
@@ -53,7 +53,7 @@ func ValidationError(errs validator.ValidationErrors) Response {
 		}
 	}
 	return Response{
-		Status: statusError,
-		Result: strings.Join(errMsgs, ","),
+		Status:  statusError,
+		Message: strings.Join(errMsgs, ","),
 	}
 }

@@ -8,8 +8,14 @@ type Student struct {
 }
 
 type Credentials struct {
-	Username    string `json:username`
-	Email       string `json:email`
-	Password    string `json:password`
-	Phonenumber string `json:phonenumber`
+	Username    string `json:"username" validate:"required"`
+	Email       string `json:"email" validate:"required,email"`
+	Password    string `json:"password" validate:"required,min=6"`
+	Phonenumber string `json:"phonenumber" validate:"required"`
+}
+
+type Login struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=6"`
+	Token    string `json:"token"`
 }
