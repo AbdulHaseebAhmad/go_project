@@ -91,11 +91,12 @@ func DeleteStudent(storage storage.Storage) http.HandlerFunc {
 		if conversionerr != nil {
 			response.WriteJson(w, http.StatusBadRequest, conversionerr)
 		}
-		student, err := storage.DeleteStudent(intId)
+		err := storage.DeleteStudent(intId)
 		if err != nil {
-			response.WriteJson(w, http.StatusInternalServerError, conversionerr)
+			response.WriteJson(w, http.StatusInternalServerError, response.GeneralError(errors.New("no user found to delete")))
+			return
 		}
 		slog.Info("Deleting Student Success")
-		response.WriteJson(w, http.StatusOK, student)
+		response.WriteJson(w, http.StatusOK, response.GeneralSuccess("Deleting Student Was a Success"))
 	}
 }

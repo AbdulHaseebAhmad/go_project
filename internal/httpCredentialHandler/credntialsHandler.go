@@ -63,19 +63,29 @@ func StudentSignin(storage storage.Storage) http.HandlerFunc {
 			response.WriteJson(w, http.StatusBadRequest, response.GeneralError(err))
 			return
 		}
-		sessiontoken, loginerr := storage.StudentSignin(r.Context(), loginData)
+		sessiontoken, csrftoken, loginerr := storage.StudentSignin(r.Context(), loginData)
 		if loginerr != nil {
 			response.WriteJson(w, http.StatusUnauthorized, response.GeneralError(loginerr))
 			return
 		}
 		//if token is generated then we attach it to a cookie
+		// this is session cookie to authenticate
 		http.SetCookie(w, &http.Cookie{
-			Name:     "Session_token",
+			Name:     "session_token",
 			Value:    sessiontoken,
 			Expires:  time.Now().Add(24 * time.Hour),
 			HttpOnly: true,
-			Secure:   true, // ✅
-			SameSite: http.SameSiteStrictMode,
+			// Secure:   true, // ✅
+			// SameSite: http.SameSiteStrictMode,
+		})
+
+		// this is csrf cookie
+		// set to authorize
+		http.SetCookie(w, &http.Cookie{
+			Name:     "csrf",
+			Value:    csrftoken,
+			Expires:  time.Now().Add(24 * time.Hour),
+			HttpOnly: false,
 		})
 		response.WriteJson(w, http.StatusAccepted, sessiontoken)
 	}

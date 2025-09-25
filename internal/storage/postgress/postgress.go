@@ -99,23 +99,28 @@ func (s *Postgres) GetStudentList() (stuentsList []types.Student, eror error) {
 	return students, nil
 }
 
-func (s *Postgres) DeleteStudent(id int64) (studentId types.Student, error error) {
+func (s *Postgres) DeleteStudent(id int64) error {
 	// delete the student,return the id, if deletion unsuccessfull return error
 	stmt, err := s.DB.Prepare("DELETE FROM students WHERE id=$1")
 	if err != nil {
 		slog.Info("Error Prepping Query")
-		return types.Student{}, err
+		return err
 	}
 	defer stmt.Close()
-	var returnedStudent types.Student
-	qerr := stmt.QueryRow(id).Scan(&returnedStudent.Id, &returnedStudent.Name, &returnedStudent.Email, &returnedStudent.Age)
+	result, qerr := stmt.Exec(id)
 	if qerr != nil {
-		if errors.Is(qerr, sql.ErrNoRows) {
-			slog.Info("No User Found")
-			return types.Student{}, sql.ErrNoRows
-		}
+		return qerr
 	}
-	return returnedStudent, nil
+	rowsAffected, rerr := result.RowsAffected()
+	if rerr != nil {
+		return rerr
+	}
+
+	if rowsAffected == 0 {
+		slog.Info("No user found to delete")
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (s *Postgres) RegisterStudent(ctx context.Context, credentials types.Credentials) (email string, err error) {
@@ -140,26 +145,44 @@ func (s *Postgres) RegisterStudent(ctx context.Context, credentials types.Creden
 	return fmt.Sprintf("User with email address %s Registered", newEmail), nil
 }
 
-func (s *Postgres) StudentSignin(ctx context.Context, credentials types.Login) (string, error) {
+func (s *Postgres) StudentSignin(ctx context.Context, credentials types.Login) (string, string, error) {
 	var retrievedPassword string
 	qerer := s.DB.QueryRowContext(ctx, "SELECT hashed_password from users where email=$1", credentials.Email).Scan(&retrievedPassword)
 	if qerer != nil {
 		if errors.Is(qerer, sql.ErrNoRows) {
-			return "", fmt.Errorf("invalid email or password")
+			return "", "", fmt.Errorf("invalid email or password")
 		}
-		return "", qerer
+		return "", "", qerer
 	}
 	_, passerror := passwordhash.Unhashpassword(credentials.Password, retrievedPassword)
 	if passerror != nil {
-		return "", fmt.Errorf("invalid email or password")
+		return "", "", fmt.Errorf("invalid email or password")
 	}
 	sessiontoken, terr := tokens.GenerateToken(32)
 	if terr != nil {
-		return "", terr
+		return "", "", terr
 	}
-	_, tqerr := s.DB.ExecContext(ctx, "UPDATE users SET token = $1 WHERE email = $2", sessiontoken, credentials.Email)
+	csrfToken, cterr := tokens.GenerateToken(32)
+	if cterr != nil {
+		return "", "", terr
+	}
+
+	_, tqerr := s.DB.ExecContext(ctx, "UPDATE users SET token = $1,csrf_token = $2 WHERE email = $3", sessiontoken, csrfToken, credentials.Email)
 	if tqerr != nil {
-		return "", tqerr
+		return "", "", tqerr
 	}
-	return sessiontoken, nil
+	return sessiontoken, csrfToken, nil
+}
+
+func (s *Postgres) AuthorizeStudent(ctx context.Context, sessiontoken string, csrfHeader string) bool {
+	var csrfToken string
+	qerr := s.DB.QueryRowContext(ctx, "SELECT csrf_token from users WHERE token=$1", sessiontoken).Scan(&csrfToken)
+	if qerr != nil {
+		if errors.Is(qerr, sql.ErrNoRows) {
+			return false
+		}
+		return false
+	}
+
+	return csrfToken == csrfHeader
 }

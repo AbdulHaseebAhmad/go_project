@@ -14,6 +14,7 @@ import (
 	"github.com/AbdulHaseebAhmad/go_project/internal/config"
 	credentialsss "github.com/AbdulHaseebAhmad/go_project/internal/httpCredentialHandler"
 	student "github.com/AbdulHaseebAhmad/go_project/internal/httpStudentHandler"
+	middleware "github.com/AbdulHaseebAhmad/go_project/internal/middlewares"
 	"github.com/AbdulHaseebAhmad/go_project/internal/storage/postgress"
 )
 
@@ -37,16 +38,17 @@ func main() {
 	})
 
 	// getting handler func from the student package, same like in js we have that call back function this route creates a student
-	router.HandleFunc("POST /api/students/create", student.New(storage))
+	router.Handle("POST /api/students/create", middleware.Authorize(storage, student.New(storage)))
 
 	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student by id
-	router.HandleFunc("GET /api/students/{id}", student.GetById(storage))
+	router.Handle("GET /api/students/{id}", middleware.Authorize(storage, student.GetById(storage)))
 
 	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student list
-	router.HandleFunc("GET /api/students/", student.GetStudentList(storage))
+	router.Handle("GET /api/students/", middleware.Authorize(storage, student.GetStudentList(storage)))
 
 	// getting handler func from the student package, same like in js we have that call back function. this route is to get the student list
-	router.HandleFunc("GET /api/students/delete/{id}", student.DeleteStudent(storage))
+	// router.HandleFunc("GET /api/students/delete/{id}", student.DeleteStudent(storage))
+	router.Handle("GET /api/students/delete/{id}", middleware.Authorize(storage, student.DeleteStudent(storage)))
 
 	// getting handler func from credentialss package , this will handle the request for sign up
 	router.HandleFunc("POST /api/student/signup", credentialsss.NewStudentRegister(storage))
