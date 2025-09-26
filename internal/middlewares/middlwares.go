@@ -24,12 +24,10 @@ func Authorize(storage storage.Storage, next http.Handler) http.Handler {
 		sessionCookie := sessionnId.Value
 		// fmt.Println(csrfHeader, sessionCookie)
 		authorized := storage.AuthorizeStudent(r.Context(), sessionCookie, csrfHeader)
-		fmt.Println(authorized)
 		if !authorized {
 			response.WriteJson(w, http.StatusUnauthorized, response.GeneralError(errors.New("unauthorized Access")))
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
-
 }

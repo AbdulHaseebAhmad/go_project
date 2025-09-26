@@ -14,7 +14,7 @@ import (
 	"github.com/AbdulHaseebAhmad/go_project/internal/config"
 	"github.com/AbdulHaseebAhmad/go_project/internal/types"
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
+	// _ "github.com/lib/pq"
 )
 
 type Postgres struct {
@@ -147,7 +147,8 @@ func (s *Postgres) RegisterStudent(ctx context.Context, credentials types.Creden
 
 func (s *Postgres) StudentSignin(ctx context.Context, credentials types.Login) (string, string, error) {
 	var retrievedPassword string
-	qerer := s.DB.QueryRowContext(ctx, "SELECT hashed_password from users where email=$1", credentials.Email).Scan(&retrievedPassword)
+	var role string
+	qerer := s.DB.QueryRowContext(ctx, "SELECT hashed_password,role from users where email=$1", credentials.Email).Scan(&retrievedPassword, &role)
 	if qerer != nil {
 		if errors.Is(qerer, sql.ErrNoRows) {
 			return "", "", fmt.Errorf("invalid email or password")
@@ -166,8 +167,18 @@ func (s *Postgres) StudentSignin(ctx context.Context, credentials types.Login) (
 	if cterr != nil {
 		return "", "", terr
 	}
-
-	_, tqerr := s.DB.ExecContext(ctx, "UPDATE users SET token = $1,csrf_token = $2 WHERE email = $3", sessiontoken, csrfToken, credentials.Email)
+	_, tqerr := s.DB.ExecContext(
+		ctx,
+		`INSERT INTO sessions (session_token, csrf_token, email, role, created_at)
+     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+     ON CONFLICT (email)
+     DO UPDATE SET
+         session_token = EXCLUDED.session_token,
+         csrf_token = EXCLUDED.csrf_token,
+         role = EXCLUDED.role,
+         created_at = CURRENT_TIMESTAMP`,
+		sessiontoken, csrfToken, credentials.Email, role,
+	)
 	if tqerr != nil {
 		return "", "", tqerr
 	}
@@ -176,7 +187,7 @@ func (s *Postgres) StudentSignin(ctx context.Context, credentials types.Login) (
 
 func (s *Postgres) AuthorizeStudent(ctx context.Context, sessiontoken string, csrfHeader string) bool {
 	var csrfToken string
-	qerr := s.DB.QueryRowContext(ctx, "SELECT csrf_token from users WHERE token=$1", sessiontoken).Scan(&csrfToken)
+	qerr := s.DB.QueryRowContext(ctx, "SELECT csrf_token from sessions WHERE session_token = $1", sessiontoken).Scan(&csrfToken)
 	if qerr != nil {
 		if errors.Is(qerr, sql.ErrNoRows) {
 			return false

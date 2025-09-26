@@ -87,6 +87,6 @@ func StudentSignin(storage storage.Storage) http.HandlerFunc {
 			Expires:  time.Now().Add(24 * time.Hour),
 			HttpOnly: false,
 		})
-		response.WriteJson(w, http.StatusAccepted, sessiontoken)
+		response.WriteJson(w, http.StatusAccepted, response.GeneralSuccess("User Logged In succesfully"))
 	}
 }
